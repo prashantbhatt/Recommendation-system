@@ -1,0 +1,19 @@
+likeness_dict={'Lisa Rose': {'Lady in the Water': 1, 'Snakes on a Plane': 1,
+ 'Just My Luck': 1, 'Superman Returns': 1, 'You, Me and Dupree': 1,
+ 'The Night Listener': 1},
+'Gene Seymour': {'Lady in the Water': 1, 'Snakes on a Plane': 1,
+ 'Just My Luck': 1, 'Superman Returns': 1, 'The Night Listener': 1,
+ 'You, Me and Dupree': 1},
+'Michael Phillips': {'Lady in the Water': 1, 'Snakes on a Plane': 1,
+ 'Superman Returns': 1, 'The Night Listener': 1},
+'Claudia Puig': {'Snakes on a Plane': 1, 'Just My Luck': 1,
+ 'The Night Listener': 1, 'Superman Returns': 1,
+ 'You, Me and Dupree': 1},
+'Mick LaSalle': {'Lady in the Water': 1, 'Snakes on a Plane': 1,
+ 'Just My Luck': 1, 'Superman Returns': 1, 'The Night Listener': 1,
+ 'You, Me and Dupree': 1},
+'Jack Matthews': {'Lady in the Water': 1, 'Snakes on a Plane': 1,
+ 'The Night Listener': 1, 'Superman Returns': 1, 'You, Me and Dupree': 1},
+'Toby': {'Snakes on a Plane': 1,'You, Me and Dupree': 1,'Superman Returns': 1}}
+
+pd.DataFrame(likeness_dict)
