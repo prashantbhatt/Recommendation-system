@@ -1,0 +1,194 @@
+import math
+import pandas as pd
+
+#-----------------------------------Define functions-------------------------------
+
+# Function to calculate similarity by perarson's correlation
+
+def sim_jaccard(p1,p2):
+    
+    intersection_cardinality = len(set.intersection(*[set(p1), set(p2)]))
+    union_cardinality = len(set.union(*[set(p1), set(p2)]))
+    return intersection_cardinality/float(union_cardinality)
+    
+#---------------------------------------------------------------------------------------
+
+# Function to calculate similarity by perarson's correlation
+
+def sim_pearson(p1,p2):
+# %%!Get the list of mutually rated items
+    si={}
+    for item in p1:
+        #print "Item in p1 " + str(item)
+        if item in p2: 
+            si[item]=1
+            #print "Item in p2 " + str(item)
+    #print "si becomes " + str(si)
+# Find the number of elements
+    n=len(si)
+    #print "length of dictionary " + str(n)
+
+# if they have no ratings in common, return 0
+    if n==0: 
+        return 0
+
+# Add up all the preferences
+    sum1=sum([p1[it] for it in si])
+    #print sum1
+    sum2=sum([p2[it] for it in si])
+    #print sum2
+
+# Sum up the squares
+    sum1Sq=sum([pow(p1[it],2) for it in si])
+    #print sum1Sq
+    sum2Sq=sum([pow(p2[it],2) for it in si])
+    #print sum2Sq
+        
+# Sum up the products
+    pSum=sum([p1[it] * p2[it] for it in si])
+    #print pSum
+        
+# Calculate Pearson score
+    num=pSum - (sum1 * sum2/n)
+    #print num
+    
+    den=math.sqrt((sum1Sq - pow(sum1,2)/n)*(sum2Sq - pow(sum2,2)/n))
+    #print den
+    
+    if den==0: return 0
+    r=num/den
+
+    return r
+#---------------------------------------------------------------------------------------
+
+# Define the function for similarity rating calculation 
+# Reading the ratings dataset which is in form of dictionary and creating the similarity matrix
+
+def create_sim_matrix(opinion_dict, similarity_function = sim_pearson):
+    
+    odf = pd.DataFrame(opinion_dict)
+    odf = odf.transpose()
+
+    similarity_dict = {}
+
+    for i in range(odf.shape[0]):
+        sdict = {}
+        d1 = {}
+        d2 = {}
+        for j in range(odf.shape[0]):
+
+            d1 = odf.iloc[i,:].to_dict()
+            d1 = {k: d1[k] for k in d1 if not math.isnan(d1[k])}
+
+            d2 = odf.iloc[j,:].to_dict()
+            d2 = {k: d2[k] for k in d2 if not math.isnan(d2[k])}
+
+            r = round(similarity_function(d1,d2),3)
+
+            sdict[odf.iloc[j,:].name] = r
+
+            similarity_dict[odf.iloc[i,:].name] = sdict       
+
+#    sr = pd.DataFrame(similarity_dict)
+    print pd.DataFrame(similarity_dict)
+    return similarity_dict
+
+#-------------------------------------------------------------------------
+
+# Using the similarity matrix and ratings data to generate recommendation for movies a person has not rated yet
+
+def recommendations(opinion_file = 'Opinions.csv', similarity_function = sim_pearson):
+    
+    all_recommendations = {}
+    
+    opinion_df = pd.read_csv(opinion_file, index_col = 0)
+    #print "opinion_df" + str(opinion_df)
+    
+    opinion_dict_new = {}
+    opinion_dict = opinion_df.to_dict()
+    for key in opinion_dict:
+        opinion_dict_new[key] = {k: opinion_dict[key][k] for k in opinion_dict[key] 
+                                 if not math.isnan(opinion_dict[key][k])}
+    #print "opinion_dict_new" + str(opinion_dict_new)
+    
+    #### Remove the NaNs here itself so that further it may not cause problem
+    opinion_dict = opinion_dict_new
+    
+    similarities = create_sim_matrix(opinion_dict, similarity_function)
+    
+    opinion_df = opinion_df.transpose()
+    
+    movie_list = list(opinion_df.columns)
+    #print "movie_list" + str(movie_list)
+    
+    #print similarities
+
+    for person in similarities:
+        print "\n"
+        sim_mult_rating = {}
+        print "Getting Recommendations for : " + person
+        similarity = similarities[person]
+        
+        #deleting self rating
+        del similarity[person]
+        #print "Similarity rating of " + str(person) +  " with others \n" + str(similarity) + "\n"
+        
+#         print "opinion_dict[person].values()" + str(opinion_dict[person].values())
+        rated_movies = opinion_dict[person]
+        #print "Movies rated by " + person + " : "+ str(rated_movies) + "\n"
+
+        movie_to_rate = set(movie_list).difference(set(rated_movies)) 
+#         print set(movie_list)
+#         print set(rated_movies.keys())
+#         print movie_to_rate
+
+        if len(movie_to_rate) == 0:
+            print "Sir you have watched all the movies, none left to recommend \n"
+        else:
+            print 'Ratings to be predicted for Movies : ' + str(list(movie_to_rate)) + "\n"
+            predicted_rating_dict = {}
+            for movie in movie_to_rate:
+                sum_similarity = float(0)
+                
+                print "Trying prediction for: " + movie
+
+                for critic in similarity.keys():
+                    
+                    if similarity[critic] <= 0:
+                        #print critic + " is not similar to " + person
+                        continue
+                    else:
+                        if movie in opinion_dict[critic]:
+                            print critic, opinion_dict[critic][movie]     
+                            sim_mult_rating[critic] = similarity[critic] * opinion_dict[critic][movie]
+                            print similarity[critic] * opinion_dict[critic][movie]
+                            sum_similarity = sum_similarity + similarity[critic]
+                        else: 
+                            #print critic +  " didn't rate"
+                            sim_mult_rating[critic] = float('NaN')
+
+                #print "\n"
+                #print "sum_similarity: " + str(sum_similarity) + "\n"
+
+                sim_mult_rating = {k: sim_mult_rating[k] for k in sim_mult_rating if not math.isnan(sim_mult_rating[k])}
+                print "Similarities multiplied by the ratings given by those person \n" + str(sim_mult_rating) + "\n"
+                # removing NAs
+
+    #           summing up the (similarity rating * critics rating)
+                sum_sim_mult_rating = reduce((lambda x,y: x + y), sim_mult_rating.values())
+
+                #print "product sum of sim * rating: " + str(sum_sim_mult_rating)
+
+                predicted_rating = round(sum_sim_mult_rating/sum_similarity,2)
+                print person + " would rate "+ movie + " as " + str(predicted_rating)
+                predicted_rating_dict[movie] = predicted_rating
+                #print predicted_rating_dict
+                
+            average_rating = reduce((lambda x,y: x + y), opinion_dict[person].values())/len(opinion_dict[person].values())
+            print "average of ratings given by " + person + " is: " + str(average_rating)
+            all_recommendations[person] = predicted_rating_dict
+            #print all_recommendations
+    
+    return all_recommendations                    
+#           
+print recommendations('likeness.csv', sim_jaccard)
